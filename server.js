@@ -12,7 +12,7 @@ var axios = require("axios");
 var cheerio = require("cheerio");
 
 
-var PORT = 3000;
+var PORT =  prodcess.env.PORT || 3000;
 
 // Initialize Express
 var app = express();
@@ -37,21 +37,9 @@ app.set("view engine", "handlebars");
 var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/news_scrape";
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true });
 
-var NEWS_SITE = process.env.NEWS_SITE || 'https://slashdot.org/';
+var NEWS_SITE = process.env.NEWS_SITE || 'http://digg.com/';
 
-function createArticle(data) {
-    return new Promise((resolve, reject) => {
-        Article.create(data).then(function (createdArticle) {
-            resolve(1);
-        }).catch(function (err) {
-            if (err.code === 11000) {
-                resolve(0);
-            } else {
-                reject(err);
-            }
-        });
-    });
-}
+
 
 // Routes
 
@@ -64,46 +52,50 @@ app.get("/scrape", function (req, res) {
 
         var newArticles = [];
         $(`article`).each(function (i, element) {
-            var titleElement = $(this).find('.story > span > a').first();
+            var titleElement = $(this).find('.entry-title > a').first();
             var title = titleElement.text();
             var url = titleElement.attr('href');
 
+            console.log(title);
+            console.log(url);
+
             if (url && url.trim()) {
 
-                var bodyElement = $(this).find('.body > div > i').first();
+                var bodyElement = $(this).find('.entry-content').first();
+
+                console.log(bodyElement.text());
 
                 newArticles.push({
                     headline: title,
-                    url: !url.match(/^[https|http]/) ? `https:${url}` : '',
+                    url: !url.match(/^[https|http]/) ? `https:${url}` : url,
                     summary: bodyElement.text(),
                 });
             }
 
         });
 
-        if (newArticles.length > 0) {
+        Article.insertMany(newArticles, { ordered: false }, function (err, data) {
 
-            const articlePromises = newArticles.map(article => createArticle(article));
-
-            Promise.all(articlePromises).then((results) => {
-                const successCount = results.reduce((a, c) => a + c, 0);
-                res.render('scrape', {
-                    message: successCount > 0 ? `Created ${successCount} articles, and ${newArticles.length - successCount} articles already existing` : 'No new articles'
-                });
-            }).catch(err => {
-                console.log(err);
-            });
-
-
-        } else {
+            const errorCount = (err && err.writeErrors && err.writeErrors.length) || 0;
+            const successCount = (data && data.length) || 0;
+    
             res.render('scrape', {
-                message: 'No new articles'
+                message: successCount > 0 ? `Created ${successCount} articles, and ${errorCount} articles already existing` : 'No new articles'
             });
-        }
+        });
 
     });
 });
 
+app.get("/", function (req, res) {
+    // Grab every document in the Articles collection
+
+    Article.find({}, function (err, data) {
+        res.render('articles', {
+            articles: data
+        });
+    });
+});
 // Route for getting all Articles from the db
 app.get("/articles", function (req, res) {
     // Grab every document in the Articles collection

@@ -40,7 +40,7 @@
 {{#each articles}}
 <div class="container-fluid article-container">
     <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="background-color: rgb(0, 174, 255);">
             <h3>
                 <a class="article-link" target="_blank" rel="noopener noreferrer" href="{{url}}">{{headline}}</a>
             </h3>
@@ -57,7 +57,7 @@
                             placeholder="Input Comments"></textarea>
                     </div>
                     <div class="input-group-append">
-                        <button id="submit" type="button" class="btn btn-primary"
+                        <button id="submit" type="button" class="btn btn-warning"
                             onclick="javascript:submitComment('{{_id}}', {{comments.length}})">Submit</button>
                     </div>
                 </div>
